@@ -4,7 +4,7 @@
 // Plugin URI: https://inn-studio.com/maintenance-mode
 // Description: The site maintenance-mode plugin | 开启站点维护模式插件，内置两种自定义功能，请参见官网说明。
 // Author: Km.Van
-// Version: 3.0.0
+// Version: 3.1.0
 // Author URI: https://inn-studio.com
 // PHP Required: 7.2
 
@@ -28,6 +28,15 @@ class MaintenanceMode
         'Logged as administrator' => [
             'zh-CN' => '已作为管理员登陆。',
         ],
+        'Administrator token URL' => [
+            'zh-CN' => '管理员令牌地址',
+        ],
+        'URL copied.' => [
+            'zh-CN' => '已复制到粘贴版。',
+        ],
+        'Please copy URL manually.' => [
+            'zh-CN' => '请手动复制 URL 地址。',
+        ],
     ];
 
     private $removePageUrl = '';
@@ -43,6 +52,7 @@ class MaintenanceMode
         }
 
         \add_action('plugins_loaded', [$this, 'filterPluginsLoaded']);
+        \add_filter('plugin_action_links', [$this, 'filterActionLink'], 10, 2);
     }
 
     public function filterPluginsLoaded(): void
@@ -64,6 +74,44 @@ class MaintenanceMode
         $this->dieWithWpDie();
     }
 
+    public function filterActionLink($actions, string $pluginFile): array
+    {
+        if (false !== \stripos($pluginFile, \basename(__DIR__))) {
+            $adminUrl = get_admin_url();
+            $url      = "{$adminUrl}?token={$this->genToken()}";
+            $opts     = <<<HTML
+<a id="inn-maintenance__copy" href="{$url}" class="button button-primary" style="line-height: 1.5; height: auto;">{$this->_('Administrator token URL')}</a>
+<script>
+;(function(){
+    var a = document.getElementById('inn-maintenance__copy');
+    a.addEventListener('click', function(e){
+        e.preventDefault();
+        try{
+            var input = document.createElement('input');
+            input.value = '{$url}';
+            document.body.append(input);
+            input.select();
+            document.execCommand('copy');
+            document.body.removeChild(input);
+            alert('{$this->_('URL copied.')}');
+        } catch (e){
+            alert('{$this->_('Please copy URL manually.')}');
+        }
+    })
+})();
+</script>
+HTML;
+
+            if ( ! \is_array($actions)) {
+                $actions = [];
+            }
+
+            \array_unshift($actions, $opts);
+        }
+
+        return $actions;
+    }
+
     private function _(string $text): string
     {
         static $lang = null;
@@ -79,11 +127,16 @@ class MaintenanceMode
         return self::LANGS[$text][$lang] ?? $text;
     }
 
+    private function genToken(): string
+    {
+        return \hash('sha512', \AUTH_KEY);
+    }
+
     private function loginWithAdmin(): void
     {
         $token = (string) \filter_input(\INPUT_GET, 'token', \FILTER_SANITIZE_STRING);
 
-        if ( ! $token || $token !== \hash('sha512', \AUTH_KEY)) {
+        if ( ! $token || $token !== $this->genToken()) {
             return;
         }
 
