@@ -4,7 +4,7 @@
 
 * Requires WordPress: 4.9.7
 * Tested up to WordPress: 4.9.8
-* Requires PHP: 7.2.0
+* Requires PHP: 7.3.0
 
 ## Usage
 

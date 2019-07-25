@@ -1,12 +1,14 @@
 <?php
 
+declare(strict_types = 1);
+
 // Plugin Name: INN Maintenance Mode | INN 维护模式
 // Plugin URI: https://inn-studio.com/maintenance-mode
 // Description: The site maintenance-mode plugin | 开启站点维护模式插件，内置两种自定义功能，请参见官网说明。
 // Author: Km.Van
-// Version: 3.1.0
+// Version: 3.2.0
 // Author URI: https://inn-studio.com
-// PHP Required: 7.2
+// PHP Required: 7.3
 
 namespace InnStudio\Plugins\MaintenanceMode;
 
@@ -61,6 +63,10 @@ class MaintenanceMode
             return;
         }
 
+        if ($this->isWpRest()) {
+            return;
+        }
+
         if (\current_user_can('manage_options')) {
             return;
         }
@@ -110,6 +116,18 @@ HTML;
         }
 
         return $actions;
+    }
+
+    private function isWpRest(): bool
+    {
+        return false !== \strpos($this->getCurrentUrl(), 'wp-json');
+    }
+
+    private function getCurrentUrl(): string
+    {
+        $scheme = \is_ssl() ? 'https' : 'http';
+
+        return "{$scheme}://{$_SERVER['HTTP_HOST']}{$_SERVER['REQUEST_URI']}";
     }
 
     private function _(string $text): string
