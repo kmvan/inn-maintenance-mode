@@ -6,7 +6,7 @@ declare(strict_types = 1);
 // Plugin URI: https://inn-studio.com/maintenance-mode
 // Description: The site maintenance-mode plugin | 开启站点维护模式插件，内置两种自定义功能，请参见官网说明。
 // Author: Km.Van
-// Version: 3.2.0
+// Version: 4.0.0
 // Author URI: https://inn-studio.com
 // PHP Required: 7.3
 
@@ -16,6 +16,8 @@ namespace InnStudio\Plugins\MaintenanceMode;
 
 class MaintenanceMode
 {
+    const TOKEN_KEY = 'innMaintenanceModeToken';
+
     const RETRY_MINUTES = 5;
 
     const DEFAULT_LANG = 'en-US';
@@ -59,19 +61,19 @@ class MaintenanceMode
 
     public function filterPluginsLoaded(): void
     {
+        $this->loginWithAdmin();
+
         if (\defined('DOING_AJAX') && \DOING_AJAX) {
             return;
         }
 
-        if ($this->isWpRest()) {
+        if ($this->isWpRestful()) {
             return;
         }
 
         if (\current_user_can('manage_options')) {
             return;
         }
-
-        $this->loginWithAdmin();
 
         \header('Retry-After: ' . self::RETRY_MINUTES * 60);
 
@@ -83,10 +85,11 @@ class MaintenanceMode
     public function filterActionLink($actions, string $pluginFile): array
     {
         if (false !== \stripos($pluginFile, \basename(__DIR__))) {
-            $adminUrl = get_admin_url();
-            $url      = "{$adminUrl}?token={$this->genToken()}";
+            $adminUrl = \get_admin_url();
+            $tokenKey = self::TOKEN_KEY;
+            $url      = "{$adminUrl}?{$tokenKey}={$this->genToken()}";
             $opts     = <<<HTML
-<a id="inn-maintenance__copy" href="{$url}" class="button button-primary" style="line-height: 1.5; height: auto;">{$this->_('Administrator token URL')}</a>
+<a id="inn-maintenance__copy" href="{$url}" class="button button-primary" style="line-height: 1.5; height: auto;">{$this->gettext('Administrator token URL')}</a>
 <script>
 ;(function(){
     var a = document.getElementById('inn-maintenance__copy');
@@ -99,9 +102,9 @@ class MaintenanceMode
             input.select();
             document.execCommand('copy');
             document.body.removeChild(input);
-            alert('{$this->_('URL copied.')}');
+            alert('{$this->gettext('URL copied.')}');
         } catch (e){
-            alert('{$this->_('Please copy URL manually.')}');
+            alert('{$this->gettext('Please copy URL manually.')}');
         }
     })
 })();
@@ -118,7 +121,7 @@ HTML;
         return $actions;
     }
 
-    private function isWpRest(): bool
+    private function isWpRestful(): bool
     {
         return false !== \strpos($this->getCurrentUrl(), 'wp-json');
     }
@@ -130,7 +133,7 @@ HTML;
         return "{$scheme}://{$_SERVER['HTTP_HOST']}{$_SERVER['REQUEST_URI']}";
     }
 
-    private function _(string $text): string
+    private function gettext(string $text): string
     {
         static $lang = null;
 
@@ -150,9 +153,34 @@ HTML;
         return \hash('sha512', \AUTH_KEY);
     }
 
+    private function getAdminRoleId(): string
+    {
+        global $wpdb;
+
+        $roles = \get_option("{$wpdb->prefix}user_roles") ?: [];
+
+        if ( ! $roles) {
+            return '';
+        }
+
+        foreach ($roles as $roleId => $role) {
+            $caps = $role['capabilities'] ?? [];
+
+            if ( ! $caps) {
+                continue;
+            }
+
+            if ((bool) ($caps['manage_options'] ?? false)) {
+                return $roleId;
+            }
+        }
+
+        return '';
+    }
+
     private function loginWithAdmin(): void
     {
-        $token = (string) \filter_input(\INPUT_GET, 'token', \FILTER_SANITIZE_STRING);
+        $token = (string) \filter_input(\INPUT_GET, self::TOKEN_KEY, \FILTER_SANITIZE_STRING);
 
         if ( ! $token || $token !== $this->genToken()) {
             return;
@@ -160,11 +188,13 @@ HTML;
 
         global $wpdb;
 
-        $metaValue = 'a:1:{s:13:"administrator";b:1;}';
-        $sql       = <<<SQL
+        $metaValue = \serialize([$this->getAdminRoleId() => true]);
+
+        $sql = <<<SQL
 SELECT `user_id` FROM `{$wpdb->prefix}usermeta`
 WHERE `meta_key` = 'wp_capabilities'
 AND `meta_value` = %s
+LIMIT 0, 1
 SQL;
         $meta = $wpdb->get_row($wpdb->prepare(
             $sql,
@@ -175,10 +205,16 @@ SQL;
             return;
         }
 
-        \wp_set_current_user($meta->user_id);
-        \wp_set_auth_cookie($meta->user_id, true);
+        \wp_set_current_user((int) $meta->user_id);
+        \wp_set_auth_cookie((int) $meta->user_id, true);
 
-        die($this->_('Logged as administrator.'));
+        $adminUrl = \get_admin_url();
+
+        echo <<<HTML
+<a href="{$adminUrl}">✔️ {$this->gettext('Logged as administrator.')}</a>
+HTML;
+
+        die;
     }
 
     private function dieWithRemotePage(): void
@@ -214,11 +250,11 @@ SQL;
 
         \wp_die(
             \sprintf(
-                $this->_('%1$s in maintenance, we will come back soon! <small>(Auto-refresh in %2$d minutes)</small>'),
+                $this->gettext('%1$s in maintenance, we will come back soon! <small>(Auto-refresh in %2$d minutes)</small>'),
                 "<a href=\"{$url}\">{$name}</a>",
                 self::RETRY_MINUTES
             ) . $this->getRetryJs(),
-            $this->_('Maintaining...'),
+            $this->gettext('Maintaining...'),
             [
                 'response' => 503,
             ]
