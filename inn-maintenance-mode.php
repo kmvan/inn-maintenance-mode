@@ -1,20 +1,20 @@
 <?php
 
-declare(strict_types = 1);
-
 // Plugin Name: INN Maintenance Mode | INN 维护模式
 // Plugin URI: https://inn-studio.com/maintenance-mode
 // Description: The site maintenance-mode plugin | 开启站点维护模式插件，内置两种自定义功能，请参见官网说明。
 // Author: Km.Van
-// Version: 4.0.0
+// Version: 4.0.1
 // Author URI: https://inn-studio.com
 // PHP Required: 7.3
+
+declare(strict_types = 1);
 
 namespace InnStudio\Plugins\MaintenanceMode;
 
 \defined('AUTH_KEY') || \http_response_code(500) && die;
 
-class MaintenanceMode
+final class MaintenanceMode
 {
     const TOKEN_KEY = 'innMaintenanceModeToken';
 
@@ -29,7 +29,7 @@ class MaintenanceMode
         '%1$s in maintenance, we will come back soon! <small>(Auto-refresh in %2$d minutes)</small>' => [
             'zh-CN' => '%1$s 正在更新维护中，请稍后再来吧！（页面 %2$d 分钟自动刷新）',
         ],
-        'Logged as administrator' => [
+        'Logged as administrator.' => [
             'zh-CN' => '已作为管理员登陆。',
         ],
         'Administrator token URL' => [
@@ -43,16 +43,14 @@ class MaintenanceMode
         ],
     ];
 
-    private $removePageUrl = '';
+    private $remoteUrl = '';
 
     private $localPagePath = \ABSPATH . '/maintenance';
 
-    public function __construct(string $removePageUrl = '')
+    public function __construct()
     {
-        $removePageUrl = (string) \filter_var($removePageUrl, \FILTER_VALIDATE_URL);
-
-        if ($removePageUrl) {
-            $this->removePageUrl = $removePageUrl;
+        if (\defined('\\INN_MAINTENANCE_MODE_REMOTE_URL') && \filter_var(\INN_MAINTENANCE_MODE_REMOTE_URL, \FILTER_VALIDATE_URL)) {
+            $this->remoteUrl = \INN_MAINTENANCE_MODE_REMOTE_URL;
         }
 
         \add_action('plugins_loaded', [$this, 'filterPluginsLoaded']);
@@ -219,12 +217,12 @@ HTML;
 
     private function dieWithRemotePage(): void
     {
-        if ($this->removePageUrl) {
-            $content = \file_get_contents($this->removePageUrl);
+        if ($this->remoteUrl) {
+            $content = \file_get_contents($this->remoteUrl);
 
-            echo $content;
-
-            die;
+            if ($content) {
+                die($content);
+            }
         }
     }
 
