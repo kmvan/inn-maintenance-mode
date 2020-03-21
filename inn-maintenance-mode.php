@@ -4,7 +4,7 @@
 // Plugin URI: https://inn-studio.com/maintenance-mode
 // Description: The site maintenance-mode plugin | 开启站点维护模式插件，内置两种自定义功能，请参见官网说明。
 // Author: Km.Van
-// Version: 4.0.1
+// Version: 4.0.2
 // Author URI: https://inn-studio.com
 // PHP Required: 7.3
 
@@ -17,8 +17,6 @@ namespace InnStudio\Plugins\MaintenanceMode;
 final class MaintenanceMode
 {
     const TOKEN_KEY = 'innMaintenanceModeToken';
-
-    const RETRY_MINUTES = 5;
 
     const DEFAULT_LANG = 'en-US';
 
@@ -45,12 +43,18 @@ final class MaintenanceMode
 
     private $remoteUrl = '';
 
+    private $refreshMinutes = 5;
+
     private $localPagePath = \ABSPATH . '/maintenance';
 
     public function __construct()
     {
         if (\defined('\\INN_MAINTENANCE_MODE_REMOTE_URL') && \filter_var(\INN_MAINTENANCE_MODE_REMOTE_URL, \FILTER_VALIDATE_URL)) {
             $this->remoteUrl = \INN_MAINTENANCE_MODE_REMOTE_URL;
+        }
+
+        if (\defined('\\INN_MAINTENANCE_MODE_REFRESH_MINUTES') && \filter_var(\INN_MAINTENANCE_MODE_REFRESH_MINUTES, \FILTER_VALIDATE_INT)) {
+            $this->refreshMinutes = (int) \INN_MAINTENANCE_MODE_REFRESH_MINUTES;
         }
 
         \add_action('plugins_loaded', [$this, 'filterPluginsLoaded']);
@@ -73,7 +77,7 @@ final class MaintenanceMode
             return;
         }
 
-        \header('Retry-After: ' . self::RETRY_MINUTES * 60);
+        \header('Retry-After: ' . $this->refreshMinutes * 60);
 
         $this->dieWithRemotePage();
         $this->dieWithLocalPage();
@@ -87,7 +91,7 @@ final class MaintenanceMode
             $tokenKey = self::TOKEN_KEY;
             $url      = "{$adminUrl}?{$tokenKey}={$this->genToken()}";
             $opts     = <<<HTML
-<a id="inn-maintenance__copy" href="{$url}" class="button button-primary" style="line-height: 1.5; height: auto;">{$this->gettext('Administrator token URL')}</a>
+<a id="inn-maintenance__copy" href="{$url}" class="button button-primary" style="line-height: 1.5; min-height: auto;">{$this->gettext('Administrator token URL')}</a>
 <script>
 ;(function(){
     var a = document.getElementById('inn-maintenance__copy');
@@ -250,7 +254,7 @@ HTML;
             \sprintf(
                 $this->gettext('%1$s in maintenance, we will come back soon! <small>(Auto-refresh in %2$d minutes)</small>'),
                 "<a href=\"{$url}\">{$name}</a>",
-                self::RETRY_MINUTES
+                $this->refreshMinutes
             ) . $this->getRetryJs(),
             $this->gettext('Maintaining...'),
             [
@@ -261,7 +265,7 @@ HTML;
 
     private function getRetryJs(): string
     {
-        $seconds = self::RETRY_MINUTES * 60 * 1000;
+        $seconds = $this->refreshMinutes * 60 * 1000;
 
         return <<<HTML
 <script>setInterval(function(){location.reload(true)}, {$seconds});</script>

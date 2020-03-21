@@ -1,4 +1,4 @@
-# INN Maintenance Mode 
+# INN Maintenance Mode
 
 ## Requires 环境
 
@@ -25,7 +25,7 @@
 
 ## Custom remote page 自定义远程页面
 
-> Add code into `wp-config.php` file: 
+> Add code into `wp-config.php` file:
 
 > 添加以下代码到 `wp-config.php` 文件：
 
@@ -39,3 +39,12 @@
 
 > 在 `WordPress` 根目录里创建一个新文件并且命名为 `maintenance`。
 
+## Custom refresh minutes 自定义刷新分钟数
+
+> Add code into `wp-config.php` file:
+
+> 添加以下代码到 `wp-config.php` 文件：
+
+```php
+\define('INN_MAINTENANCE_MODE_REFRESH_MINUTES', 5);
+```
