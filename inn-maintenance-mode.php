@@ -4,7 +4,7 @@
 // Plugin URI: https://inn-studio.com/maintenance-mode
 // Description: The site maintenance-mode plugin | 开启站点维护模式插件，内置两种自定义功能，请参见官网说明。
 // Author: Km.Van
-// Version: 4.0.2
+// Version: 4.0.3
 // Author URI: https://inn-studio.com
 // PHP Required: 7.3
 
@@ -38,6 +38,9 @@ final class MaintenanceMode
         ],
         'Please copy URL manually.' => [
             'zh-CN' => '请手动复制 URL 地址。',
+        ],
+        'Unable to locate admin user.' => [
+            'zh-CN' => '无法定位管理员用户。',
         ],
     ];
 
@@ -159,7 +162,7 @@ HTML;
     {
         global $wpdb;
 
-        $roles = \get_option("{$wpdb->prefix}user_roles") ?: [];
+        $roles = \get_option("{$wpdb->prefix}user_roles") ?: \get_option('wp_user_roles') ?: [];
 
         if ( ! $roles) {
             return '';
@@ -190,21 +193,23 @@ HTML;
 
         global $wpdb;
 
-        $metaValue = \serialize([$this->getAdminRoleId() => true]);
-
         $sql = <<<SQL
 SELECT `user_id` FROM `{$wpdb->prefix}usermeta`
-WHERE `meta_key` = 'wp_capabilities'
-AND `meta_value` = %s
+WHERE (
+    `meta_key` = '{$wpdb->prefix}capabilities'
+    OR
+    `meta_key` = 'wp_capabilities'
+)
+AND `meta_value` LIKE %s
 LIMIT 0, 1
 SQL;
         $meta = $wpdb->get_row($wpdb->prepare(
             $sql,
-            $metaValue
+            "%{$this->getAdminRoleId()}%"
         ));
 
         if ( ! $meta) {
-            return;
+            die(\gettext('Unable to locate admin user'));
         }
 
         \wp_set_current_user((int) $meta->user_id);
