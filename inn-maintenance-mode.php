@@ -4,23 +4,23 @@
 // Plugin URI: https://inn-studio.com/maintenance-mode
 // Description: The site maintenance-mode plugin | 开启站点维护模式插件，内置两种自定义功能，请参见官网说明。
 // Author: Km.Van
-// Version: 4.0.3
+// Version: 4.0.4
 // Author URI: https://inn-studio.com
 // PHP Required: 7.3
 
-declare(strict_types = 1);
+declare(strict_types=1);
 
 namespace InnStudio\Plugins\MaintenanceMode;
 
-\defined('AUTH_KEY') || \http_response_code(500) && die;
+\defined('AUTH_KEY') || http_response_code(500) && exit;
 
 final class MaintenanceMode
 {
-    const TOKEN_KEY = 'innMaintenanceModeToken';
+    public const TOKEN_KEY = 'innMaintenanceModeToken';
 
-    const DEFAULT_LANG = 'en-US';
+    public const DEFAULT_LANG = 'en-US';
 
-    const LANGS = [
+    public const LANGS = [
         'Maintaining...' => [
             'zh-CN' => '维护中……',
         ],
@@ -48,27 +48,27 @@ final class MaintenanceMode
 
     private $refreshMinutes = 5;
 
-    private $localPagePath = \ABSPATH . '/maintenance';
+    private $localPagePath = ABSPATH . '/maintenance';
 
     public function __construct()
     {
-        if (\defined('\\INN_MAINTENANCE_MODE_REMOTE_URL') && \filter_var(\INN_MAINTENANCE_MODE_REMOTE_URL, \FILTER_VALIDATE_URL)) {
-            $this->remoteUrl = \INN_MAINTENANCE_MODE_REMOTE_URL;
+        if (\defined('\\INN_MAINTENANCE_MODE_REMOTE_URL') && filter_var(INN_MAINTENANCE_MODE_REMOTE_URL, \FILTER_VALIDATE_URL)) {
+            $this->remoteUrl = INN_MAINTENANCE_MODE_REMOTE_URL;
         }
 
-        if (\defined('\\INN_MAINTENANCE_MODE_REFRESH_MINUTES') && \filter_var(\INN_MAINTENANCE_MODE_REFRESH_MINUTES, \FILTER_VALIDATE_INT)) {
-            $this->refreshMinutes = (int) \INN_MAINTENANCE_MODE_REFRESH_MINUTES;
+        if (\defined('\\INN_MAINTENANCE_MODE_REFRESH_MINUTES') && filter_var(INN_MAINTENANCE_MODE_REFRESH_MINUTES, \FILTER_VALIDATE_INT)) {
+            $this->refreshMinutes = (int) INN_MAINTENANCE_MODE_REFRESH_MINUTES;
         }
 
-        \add_action('plugins_loaded', [$this, 'filterPluginsLoaded']);
-        \add_filter('plugin_action_links', [$this, 'filterActionLink'], 10, 2);
+        add_action('plugins_loaded', [$this, 'filterPluginsLoaded']);
+        add_filter('plugin_action_links', [$this, 'filterActionLink'], 10, 2);
     }
 
     public function filterPluginsLoaded(): void
     {
         $this->loginWithAdmin();
 
-        if (\defined('DOING_AJAX') && \DOING_AJAX) {
+        if (\defined('DOING_AJAX') && DOING_AJAX) {
             return;
         }
 
@@ -76,11 +76,11 @@ final class MaintenanceMode
             return;
         }
 
-        if (\current_user_can('manage_options')) {
+        if (current_user_can('manage_options')) {
             return;
         }
 
-        \header('Retry-After: ' . $this->refreshMinutes * 60);
+        header('Retry-After: ' . $this->refreshMinutes * 60);
 
         $this->dieWithRemotePage();
         $this->dieWithLocalPage();
@@ -89,8 +89,8 @@ final class MaintenanceMode
 
     public function filterActionLink($actions, string $pluginFile): array
     {
-        if (false !== \stripos($pluginFile, \basename(__DIR__))) {
-            $adminUrl = \get_admin_url();
+        if (false !== mb_stripos($pluginFile, basename(__DIR__))) {
+            $adminUrl = get_admin_url();
             $tokenKey = self::TOKEN_KEY;
             $url      = "{$adminUrl}?{$tokenKey}={$this->genToken()}";
             $opts     = <<<HTML
@@ -120,7 +120,7 @@ HTML;
                 $actions = [];
             }
 
-            \array_unshift($actions, $opts);
+            array_unshift($actions, $opts);
         }
 
         return $actions;
@@ -128,12 +128,12 @@ HTML;
 
     private function isWpRestful(): bool
     {
-        return false !== \strpos($this->getCurrentUrl(), 'wp-json');
+        return false !== mb_strpos($this->getCurrentUrl(), 'wp-json');
     }
 
     private function getCurrentUrl(): string
     {
-        $scheme = \is_ssl() ? 'https' : 'http';
+        $scheme = is_ssl() ? 'https' : 'http';
 
         return "{$scheme}://{$_SERVER['HTTP_HOST']}{$_SERVER['REQUEST_URI']}";
     }
@@ -144,7 +144,7 @@ HTML;
 
         if (null === $lang) {
             if (isset($_SERVER['HTTP_ACCEPT_LANGUAGE'])) {
-                $lang = \explode(',', $_SERVER['HTTP_ACCEPT_LANGUAGE'])[0] ?? self::DEFAULT_LANG;
+                $lang = explode(',', $_SERVER['HTTP_ACCEPT_LANGUAGE'])[0] ?? self::DEFAULT_LANG;
             } else {
                 $lang = self::DEFAULT_LANG;
             }
@@ -155,14 +155,14 @@ HTML;
 
     private function genToken(): string
     {
-        return \hash('sha512', \AUTH_KEY);
+        return hash('sha512', AUTH_KEY);
     }
 
     private function getAdminRoleId(): string
     {
         global $wpdb;
 
-        $roles = \get_option("{$wpdb->prefix}user_roles") ?: \get_option('wp_user_roles') ?: [];
+        $roles = get_option("{$wpdb->prefix}user_roles") ?: get_option('wp_user_roles') ?: [];
 
         if ( ! $roles) {
             return '';
@@ -185,7 +185,7 @@ HTML;
 
     private function loginWithAdmin(): void
     {
-        $token = (string) \filter_input(\INPUT_GET, self::TOKEN_KEY, \FILTER_SANITIZE_STRING);
+        $token = (string) filter_input(\INPUT_GET, self::TOKEN_KEY, \FILTER_DEFAULT);
 
         if ( ! $token || $token !== $this->genToken()) {
             return;
@@ -209,28 +209,28 @@ SQL;
         ));
 
         if ( ! $meta) {
-            die(\gettext('Unable to locate admin user'));
+            exit(gettext('Unable to locate admin user'));
         }
 
-        \wp_set_current_user((int) $meta->user_id);
-        \wp_set_auth_cookie((int) $meta->user_id, true);
+        wp_set_current_user((int) $meta->user_id);
+        wp_set_auth_cookie((int) $meta->user_id, true);
 
-        $adminUrl = \get_admin_url();
+        $adminUrl = get_admin_url();
 
         echo <<<HTML
 <a href="{$adminUrl}">✔️ {$this->gettext('Logged as administrator.')}</a>
 HTML;
 
-        die;
+        exit;
     }
 
     private function dieWithRemotePage(): void
     {
         if ($this->remoteUrl) {
-            $content = \file_get_contents($this->remoteUrl);
+            $content = file_get_contents($this->remoteUrl);
 
             if ($content) {
-                die($content);
+                exit($content);
             }
         }
     }
@@ -240,23 +240,23 @@ HTML;
         foreach (['html', 'php', 'htm'] as $ext) {
             $filePath = "{$this->localPagePath}.{$ext}";
 
-            if ( ! \is_file($filePath)) {
+            if ( ! is_file($filePath)) {
                 continue;
             }
 
             include $filePath;
 
-            die;
+            exit;
         }
     }
 
     private function dieWithWpDie(): void
     {
-        $url  = \get_bloginfo('url');
-        $name = \get_bloginfo('name');
+        $url  = get_bloginfo('url');
+        $name = get_bloginfo('name');
 
-        \wp_die(
-            \sprintf(
+        wp_die(
+            sprintf(
                 $this->gettext('%1$s in maintenance, we will come back soon! <small>(Auto-refresh in %2$d minutes)</small>'),
                 "<a href=\"{$url}\">{$name}</a>",
                 $this->refreshMinutes
@@ -273,7 +273,12 @@ HTML;
         $seconds = $this->refreshMinutes * 60 * 1000;
 
         return <<<HTML
-<script>setInterval(function(){location.reload(true)}, {$seconds});</script>
+<script>
+;(() => {
+  setInterval(() => {
+    location.reload(true)
+  }, {$seconds})
+})();</script>
 HTML;
     }
 }

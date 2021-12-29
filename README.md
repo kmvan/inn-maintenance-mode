@@ -2,8 +2,8 @@
 
 ## Requires 环境
 
-* Requires WordPress: 4.9.7
-* Tested up to WordPress: 4.9.8
+* Requires WordPress: 4.9.9
+* Tested up to WordPress: 5.9.99
 * Requires PHP: 7.3.0
 
 ## Usage 使用

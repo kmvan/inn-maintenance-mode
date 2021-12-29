@@ -2,7 +2,7 @@
 Contributors: kmvan
 Tags: maintenance
 Requires at least: 4.9.9
-Tested up to: 5.4.99
+Tested up to: 5.9.99
 Requires PHP: 7.3.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -45,4 +45,5 @@ License URI: https://www.gnu.org/licenses/gpl-2.0.html
 > Upload to the `/wp-content/plugins/` directory and ENABLE it.
 
 == Changelog ==
+- 2020-04-16 4.0.4 兼容PHP8.1
 - 2020-04-16 4.0.3 增强管理员令牌登录兼容性
