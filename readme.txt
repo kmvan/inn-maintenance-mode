@@ -45,5 +45,5 @@ License URI: https://www.gnu.org/licenses/gpl-2.0.html
 > Upload to the `/wp-content/plugins/` directory and ENABLE it.
 
 == Changelog ==
-- 2020-04-16 4.0.4 兼容PHP8.1
+- 2020-04-16 5.0.0 调整显示样式
 - 2020-04-16 4.0.3 增强管理员令牌登录兼容性

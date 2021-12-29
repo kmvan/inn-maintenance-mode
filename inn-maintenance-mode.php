@@ -4,9 +4,9 @@
 // Plugin URI: https://inn-studio.com/maintenance-mode
 // Description: The site maintenance-mode plugin | 开启站点维护模式插件，内置两种自定义功能，请参见官网说明。
 // Author: Km.Van
-// Version: 4.0.4
+// Version: 5.0.0
 // Author URI: https://inn-studio.com
-// PHP Required: 7.3
+// PHP Required: 7.3.0
 
 declare(strict_types=1);
 
