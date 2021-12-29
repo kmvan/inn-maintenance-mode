@@ -80,8 +80,6 @@ final class MaintenanceMode
             return;
         }
 
-        header('Retry-After: ' . $this->refreshMinutes * 60);
-
         $this->dieWithRemotePage();
         $this->dieWithLocalPage();
         $this->dieWithWpDie();
@@ -252,20 +250,38 @@ HTML;
 
     private function dieWithWpDie(): void
     {
-        $url  = get_bloginfo('url');
-        $name = get_bloginfo('name');
+        http_response_code(503);
+        $lang    = str_replace('_', '-', (string) get_option('WPLANG'));
+        $url     = get_bloginfo('url');
+        $name    = get_bloginfo('name');
+        $content = sprintf(
+            $this->gettext('%1$s in maintenance, we will come back soon! <small>(Auto-refresh in %2$d minutes)</small>'),
+            "<a href=\"{$url}\">{$name}</a>",
+            $this->refreshMinutes
+        ) . $this->getRetryJs();
+        echo <<<HTML
+<!DOCTYPE html>
+<html lang="{$lang}">
+<head>
+<title>{$name} - {$this->gettext('Maintaining...')}</title>
+<style>
+body{background:#fafafa;margin:0;}
+main{
+    text-align:center;
+    position:absolute;
+    top:40%;
+    color:#333;
+    width:100vw;
+}
+</style>
+</head>
+<body>
+    <main>{$content}</main>
+</body>
+</html>
+HTML;
 
-        wp_die(
-            sprintf(
-                $this->gettext('%1$s in maintenance, we will come back soon! <small>(Auto-refresh in %2$d minutes)</small>'),
-                "<a href=\"{$url}\">{$name}</a>",
-                $this->refreshMinutes
-            ) . $this->getRetryJs(),
-            $this->gettext('Maintaining...'),
-            [
-                'response' => 503,
-            ]
-        );
+        exit;
     }
 
     private function getRetryJs(): string
